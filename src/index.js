@@ -35,7 +35,33 @@ const getMeaningfulNode = ast => {
   }
 };
 
-const omitKeysDefault = ['start', 'end', 'loc'];
+const stripDeep = (obj, comparator) => {
+  if (!obj) {
+    return obj;
+  }
+
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj;
+  }
+
+  const o = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const comparatorValue = comparator ? comparator[key] : comparator;
+    if (key === 'name' && comparatorValue === '_') {
+      o[key] = comparatorValue;
+    } else {
+      o[key] = stripDeep(value, comparatorValue);
+    }
+  }
+
+  return o;
+};
+
+const omitKeysDefault = new Set(['start', 'end', 'loc', 'computed']);
 
 const matchAsts = (smaller, bigger, { anonymous }) => {
   const omitKeys = anonymous ? [...omitKeysDefault, 'name'] : omitKeysDefault;
@@ -44,7 +70,8 @@ const matchAsts = (smaller, bigger, { anonymous }) => {
 
   traverse(bigger, {
     enter(path) {
-      if (deepEqual(omitDeep(path.node, ...omitKeys), smaller)) {
+      const toCompare = stripDeep(omitDeep(path.node, ...omitKeys), smaller);
+      if (deepEqual(toCompare, smaller)) {
         matches.push(path.node);
       }
     },
